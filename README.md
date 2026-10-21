@@ -1,72 +1,49 @@
 # repo-guard
 
-**GitHub'dan indirdiğin kodu çalıştırmadan önce denetleyen, ücretsiz ve açık kaynak statik güvenlik tarayıcısı.**
-Zararlı yazılım belirtilerini, sistemi çökertecek veya veri silecek komutları, API anahtarı/kimlik hırsızlığını, tedarik zinciri tuzaklarını ve yapay zekâ ajanlarını hedefleyen dosyaları arar. **Taradığı hiçbir şeyi çalıştırmaz.**
+[English](README.md) | [Türkçe](README.tr.md)
 
-> ### Canlı test: 20 ayrı repo, gerçek veri
-> repo-guard, "token kullanımını düşürüyoruz" diyen **20 ayrı GitHub reposunda** canlı olarak denendi. Toplam 26 974 dosya, yaklaşık 5 dakikada tarandı.
-> * **20 reponun 0'ında** zararlı yazılım bulundu.
-> * **20 reponun 1'inde** doğrulanmış bir güvenlik açığı bulundu (GitHub Actions betik enjeksiyonu; düzeltilene kadar ayrıntı gizli).
-> * **20 reponun 9'unda** riskli uygulama bulundu (doğrulamasız `curl | sh` kurulumları).
-> * Tüm yüksek ve kritik bulgular kaynak kodda elle doğrulandı.
+**A free, open-source static security scanner that inspects code downloaded from GitHub *before* you run it.**
+It looks for malware indicators, destructive commands, credential theft, supply-chain traps, and files that target AI coding agents. **It never executes anything it scans.**
+
+> ### Field test: 20 repos, real data
+> repo-guard was run against **20 GitHub repos** that advertise "reduce your token usage" (26,974 files, ~5 minutes).
+> * **0 of 20** contained malware.
+> * **1 of 20** had a verified vulnerability (GitHub Actions script injection; details withheld until fixed).
+> * **9 of 20** shipped risky install patterns (unverified `curl | sh`).
+> * Every high/critical finding was manually verified in source.
 >
-> Yöntem, repo listesi, commit'ler ve sınırlar: **[docs/FIELD-TEST.md](docs/FIELD-TEST.md)**
+> Method and limits: [docs/FIELD-TEST.md](docs/FIELD-TEST.md) (Turkish)
 
-## Kurulum
+## Install
 ```bash
-pip install git+https://github.com/therturk35/repo-guard   # bağımlılık yok, Python 3.9+
+pip install git+https://github.com/therturk35/repo-guard   # zero dependencies, Python 3.9+
 ```
 
-## Kullanım
+## Usage
 ```bash
-repo-guard fetch sahip/depo                 # güvenli indir (hook/alt modül/LFS kapalı) + tara
-repo-guard scan ./indirilen-klasor          # yerel klasör
-repo-guard scan paket.zip                   # arşivi diske açmadan tara
-repo-guard scan . --format prompt --min-severity medium --out fix-prompt.txt   # düzeltme promptu
-repo-guard scan . --format sarif --out rg.sarif     # GitHub Code Scanning
+repo-guard fetch owner/repo            # safe download (hooks/submodules/LFS disabled) + scan
+repo-guard scan ./downloaded-folder    # local directory
+repo-guard scan package.zip            # scans archives without extracting to disk
+repo-guard scan . --format sarif --out rg.sarif   # GitHub Code Scanning
 repo-guard rules | repo-guard explain RG-GHA-002 | repo-guard selftest
 ```
-Biçimler: `text`, `json`, `markdown`, `sarif`, `html`, `prompt`.
-Çıkış kodları: `0` eşik altı · `1` `--fail-on` (varsayılan `high`) eşiği aşıldı · `2` tarama eksik (sınır veya hata). Eksik tarama asla "temiz" gibi gösterilmez.
+Formats: `text`, `json`, `markdown`, `sarif`, `html`, `prompt`.
+Exit codes: `0` below threshold, `1` `--fail-on` threshold exceeded (default `high`), `2` incomplete scan. An incomplete scan is never reported as clean.
 
-## Açıkları kapatmak: düzeltme promptu
-`--format prompt` bulguları, Claude Code, Cursor veya Copilot gibi bir ajana yapıştırılabilecek bir talimata çevirir. Ajana önce doğrulamasını, işlem gerektirmeyen eşleşmelere (test verisi, kara liste) dokunmamasını, hiçbir şeyi çalıştırmamasını ve sırları yazdırmamasını söyler. Elle kullanım ve önce/sonra kalıpları için: **[docs/FIX-PROMPT.md](docs/FIX-PROMPT.md)**
+## What it detects (mapped to MITRE ATT&CK)
+Download-and-execute, credential/key theft, destructive commands, persistence, leaked secrets (masked), supply-chain tricks (npm `postinstall`, `setup.py` via AST, typosquats), GitHub Actions injection (pwn request, `${{ }}`), malicious git hooks, IDE/AI-agent abuse (VS Code `folderOpen`, MCP commands, prompt injection), obfuscation (Trojan Source, invisible Unicode), and archive attacks (zip-slip, bombs, symlinks).
+Findings that co-occur in one file (e.g. credential read + network send) are correlated into a single higher-severity finding.
 
-## Neyi tespit eder?
-| Alan | Örnekler | MITRE |
-|---|---|---|
-| Kod çalıştırma / indirici | `curl\|sh`, `iex(irm …)`, base64→kabuk, reverse shell, LOLBin, madenci | T1105, T1059, T1496 |
-| Kimlik / anahtar hırsızlığı | `~/.ssh`, `~/.aws/credentials`, `.npmrc`, tarayıcı şifre/çerez, cüzdan, toplu `env` + ağ gönderimi, webhook/OAST | T1552, T1555, T1041 |
-| Yok etme / çökertme | `rm -rf /`, fork bomb, `dd of=/dev/sda`, gölge kopya silme, güvenlik kapatma, fidye notu | T1485, T1490, T1562 |
-| Kalıcılık | `.bashrc`, cron/systemd/LaunchAgents/Run anahtarı, `authorized_keys`, `LD_PRELOAD`, `.pth` | T1546, T1053, T1098 |
-| Sızmış sırlar (maskelenir) | GitHub/AWS/Slack/Stripe/Google/Anthropic/OpenAI anahtarları, PEM | T1552.001 |
-| Tedarik zinciri | npm `postinstall`, `setup.py` (AST ile), typosquat, git/URL bağımlılığı | T1195 |
-| GitHub Actions | pwn request, `${{ }}` betik enjeksiyonu, SHA'sız `uses:`, `write-all` | T1195.002 |
-| Git meta | etkin hook, `core.fsmonitor`, `ext::` alt modül | T1546 |
-| IDE / yapay zekâ ajanı | VS Code `folderOpen`, devcontainer, `.envrc`, MCP komutları, prompt injection | T1204 |
-| Gizleme | Trojan Source (bidi), görünmez Unicode tag, homoglif, uzun base64, `chr()` zinciri | T1027 |
-| Arşiv / ikili | zip/tar-slip, bomba, şifreli üye, symlink, uzantı sahteciliği, UPX | T1036, T1027 |
+## Security design
+* Nothing is executed, imported, or eval'd. `setup.py` is parsed as an AST only.
+* Symlinks are not followed; FIFOs and devices are never opened; archives are read in memory with size limits.
+* Bounded regexes with keyword pre-filters (ReDoS-tested). Report excerpts are sanitized; secrets are masked; HTML reports use a CSP.
+* A scanned repo cannot declare itself clean: the ignore file is honored only via an explicit `--ignore-file`.
 
-Bulgular aynı dosyada birleşince (örneğin kimlik okuma + ağ gönderimi) ayrı bir **korelasyon** bulgusu üretilir. Belge, test ve kara liste bağlamındaki eşleşmelerin önemi otomatik olarak düşürülür; neden düşürüldüğü raporda yazar.
+## Self-scan
+CI runs repo-guard on its own repo on every push with `--fail-on high`. Rule definitions and docs intentionally contain dangerous strings, so they are excluded via `.github/self-scan.ignore`.
 
-## Güvenlik tasarımı
-* Hiçbir dosya çalıştırılmaz, import edilmez, eval edilmez. `setup.py` yalnızca AST olarak ayrıştırılır.
-* Symlink takip edilmez. FIFO ve aygıt dosyaları açılmaz. Arşivler diske açılmadan, boyut sınırlı olarak bellekte okunur.
-* Tüm regex'ler sınırlı nicelik ve anahtar kelime ön filtresi kullanır (ReDoS testi var).
-* Rapordaki alıntılar terminal kaçış dizilerinden ve bidi karakterlerinden arındırılır, sırlar maskelenir. HTML raporunda CSP kullanılır.
-* Taranan repo kendi kendini "temiz" ilan edemez: ignore dosyası yalnızca `--ignore-file` ile açıkça verilir.
+## Limits
+Static analysis gives a **signal, not proof**. "No findings" does not mean "safe". Runtime-downloaded code, dependency internals, and compiled binaries are not inspected. If something looks suspicious, inspect it in an isolated VM.
 
-## Sınırlar
-Statik analiz bir **işaret** verir, kanıt değil. "Bulgu yok", "güvenli" demek değildir. Çalışma anında indirilen kod, bağımlılıkların içi ve derlenmiş ikililerin davranışı görülmez. Şüpheli bir şey görürsen kodu yalıtılmış bir sanal makinede incele.
-
-## Geliştirme
-```bash
-pip install -e . pytest && repo-guard selftest && python -m pytest -q
-```
-Kurallar `repo_guard/rules_*.py` içinde; her kural kendi pozitif/negatif örnekleriyle CI'da doğrulanır. Ayrıntılar için [CONTRIBUTING.md](CONTRIBUTING.md), güvenlik bildirimi için [SECURITY.md](SECURITY.md).
-
-Lisans: MIT · Tuğçe Ertürk
-
-## Kendi kendini tarar (self-scan)
-
-CI her push'ta repo-guard'ı kendi reposunda `--fail-on high` ile çalıştırır. Kural tanımları ve örnekleri bilerek tehlikeli dizeler içerdiği için `.github/self-scan.ignore` ile hariç tutulur.
+License: MIT
