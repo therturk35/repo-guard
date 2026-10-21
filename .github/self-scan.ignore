@@ -1,0 +1,9 @@
+# repo-guard'ın kendi kaynak kodu: kural tanımları ve örnekleri tehlikeli dizeleri BİLEREK içerir.
+* repo_guard/rules_*.py
+* repo_guard/analyzers/*.py
+* repo_guard/reports.py
+* repo_guard/correlate.py
+* tests/*
+* docs/*
+* README.md
+* .github/workflows/ci.yml

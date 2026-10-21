@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "repo-guard"
+dynamic = ["version"]
+description = "GitHub'dan indirilen kodu çalıştırmadan statik olarak denetleyen güvenlik tarayıcısı"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Tuğçe Ertürk" }]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+repo-guard = "repo_guard.cli:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "repo_guard.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["repo_guard*"]
