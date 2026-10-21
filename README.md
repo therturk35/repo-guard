@@ -66,3 +66,7 @@ pip install -e . pytest && repo-guard selftest && python -m pytest -q
 Kurallar `repo_guard/rules_*.py` içinde; her kural kendi pozitif/negatif örnekleriyle CI'da doğrulanır. Ayrıntılar için [CONTRIBUTING.md](CONTRIBUTING.md), güvenlik bildirimi için [SECURITY.md](SECURITY.md).
 
 Lisans: MIT · Tuğçe Ertürk
+
+## Kendi kendini tarar (self-scan)
+
+CI her push'ta repo-guard'ı kendi reposunda `--fail-on high` ile çalıştırır. Kural tanımları ve örnekleri bilerek tehlikeli dizeler içerdiği için `.github/self-scan.ignore` ile hariç tutulur.
