@@ -7,3 +7,4 @@
 * docs/*
 * README.md
 * .github/workflows/ci.yml
+* repo_guard.egg-info/*
